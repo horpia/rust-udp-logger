@@ -1,1 +1,2 @@
-# rust-logger-server
+# Test UDP Server for Logging 
+
