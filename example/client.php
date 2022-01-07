@@ -6,7 +6,7 @@ $logger = new Logger($config['server']['ip'], (int)$config['server']['port']);
 $startTime = microtime(true);
 
 for ($i = 0; $i < 1000; $i++) {
-	$logger->log('group1', 'некая utf8 строка');
+	$logger->log('group1', str_repeat('a', 32000));
 }
 
 for ($i = 0; $i < 10000; $i++) {

@@ -21,6 +21,8 @@ fn main() {
     let config = Config::new();
     let err_logger = ErrLogger::new();
 
+    println!("Start UDP server on {}:{}", config.ip, config.port);
+
     let socket = match UdpSocket::bind(format!("{}:{}", config.ip, config.port)) {
         Ok(v) => v,
         Err(e) => {
@@ -28,6 +30,8 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    println!("Server is up");
 
     let (sender, receiver): (_, Receiver<Message>) = mpsc::channel();
 
@@ -69,12 +73,16 @@ fn flush_messages(lock: &Arc<RwLock<bool>>, config: &Config, err_logger: &ErrLog
         return;
     }
 
+    println!("Save logs to DB: {}", config.db_path);
+
     let lock_cloned = Arc::clone(lock);
     let db_file = config.db_path.clone();
 
     thread::spawn(move || {
         let mut lock_write = lock_cloned.write().unwrap();
         *lock_write = true;
+
+        let mut queries_count: u32 = 0;
 
         let counters = collapse_counters(&buffer);
         let mut sql = String::new();
@@ -89,6 +97,7 @@ fn flush_messages(lock: &Arc<RwLock<bool>>, config: &Config, err_logger: &ErrLog
 
         for msg in buffer.iter() {
             if let Message::Log { group_name, time, value } = msg {
+                queries_count += 1;
                 sql.push_str(format!("
                     INSERT INTO logs
                         (name, time, value)
@@ -100,6 +109,7 @@ fn flush_messages(lock: &Arc<RwLock<bool>>, config: &Config, err_logger: &ErrLog
 
         for counter in counters.iter() {
             if let Message::Counter { counter_name, time, value } = counter {
+                queries_count += 1;
                 sql.push_str(format!("
                     INSERT INTO counters
                         (name, time, value)
@@ -115,12 +125,14 @@ fn flush_messages(lock: &Arc<RwLock<bool>>, config: &Config, err_logger: &ErrLog
             thread_err_logger.log(format!("Cannot save messages to DB. {:?}", e).as_str());
         });
 
+        println!("Saved. Total queries: {}", queries_count);
+
         *lock_write = false;
     });
 }
 
 fn start_udp_threads(num: u8, err_logger: &ErrLogger, sender: &Sender<Message>, socket: &UdpSocket) {
-    for _ in 0..num {
+    for i in 0..num {
         let thread_socket = socket.try_clone().unwrap();
         let thread_sender = sender.clone();
         let thread_err_logger = err_logger.clone();
