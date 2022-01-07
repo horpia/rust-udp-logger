@@ -18,6 +18,8 @@ const FLUSH_MESSAGES_COUNT: usize = 500;
 const FLUSH_TIME_PERIOD_MS: u128 = 4500;
 
 fn main() {
+    println!("Read config");
+
     let config = Config::new();
     let err_logger = ErrLogger::new();
 
