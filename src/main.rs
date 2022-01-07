@@ -132,7 +132,7 @@ fn flush_messages(lock: &Arc<RwLock<bool>>, config: &Config, err_logger: &ErrLog
 }
 
 fn start_udp_threads(num: u8, err_logger: &ErrLogger, sender: &Sender<Message>, socket: &UdpSocket) {
-    for i in 0..num {
+    for _ in 0..num {
         let thread_socket = socket.try_clone().unwrap();
         let thread_sender = sender.clone();
         let thread_err_logger = err_logger.clone();
